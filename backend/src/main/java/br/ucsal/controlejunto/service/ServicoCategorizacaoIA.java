@@ -67,7 +67,7 @@ public class ServicoCategorizacaoIA {
     private final Duration timeout;
 
     public ServicoCategorizacaoIA(@Value("${app.ia.chave:}") String chave,
-                                  @Value("${app.ia.modelo:gemini-2.5-flash}") String modelo,
+                                  @Value("${app.ia.modelo:gemini-3.8-flash}") String modelo,
                                   @Value("${app.ia.timeout-segundos:3}") long timeoutSegundos) {
         this.chave = chave;
         this.modelo = modelo;
@@ -108,10 +108,14 @@ public class ServicoCategorizacaoIA {
         try {
             Map<String, Object> config = new LinkedHashMap<>();
             config.put("temperature", 0);
-            config.put("maxOutputTokens", 20);
-            if (modelo.startsWith("gemini-2.5-flash")) {
-                // Sem a etapa de "raciocínio", o modelo responde bem dentro do limite de 3 s (RNF-015)
+            // O limite inclui os tokens de "raciocínio" do modelo; a resposta em si é só o nome da categoria
+            config.put("maxOutputTokens", 1024);
+            if (modelo.startsWith("gemini-2.5")) {
+                // Gemini 2.5: desliga o "raciocínio" para responder dentro do limite de tempo (RNF-015)
                 config.put("thinkingConfig", Map.of("thinkingBudget", 0));
+            } else if (modelo.startsWith("gemini-3")) {
+                // Gemini 3.x: não permite desligar o raciocínio; o nível mais baixo é "low"
+                config.put("thinkingConfig", Map.of("thinkingLevel", "low"));
             }
             Map<String, Object> corpo = Map.of(
                     "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
