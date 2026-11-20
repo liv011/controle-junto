@@ -249,24 +249,21 @@ public class GrupoService {
         return detalhar(usuarioId, grupoId);
     }
 
-    /** RF-009: o devedor (ou quem recebe) marca a dívida como paga. */
+    /** RF-009: o participante devedor marca a dívida como paga; quem vai receber é notificado. */
     @Transactional
     public GrupoDetalheResponse quitarDivida(Long usuarioId, Long dividaId) {
         Divida divida = dividas.findById(dividaId)
                 .orElseThrow(() -> new NaoEncontradoException("Dívida não encontrada."));
-        boolean envolvido = divida.getDevedor().getId().equals(usuarioId)
-                || divida.getCredor().getId().equals(usuarioId);
-        if (!envolvido) {
-            throw new AcessoNegadoException("Só quem deve ou quem vai receber pode marcar esta dívida como paga.");
+        if (!divida.getDevedor().getId().equals(usuarioId)) {
+            throw new AcessoNegadoException("Só quem deve pode marcar esta dívida como paga.");
         }
+        exigirAtivo(divida.getGrupo());
         if (!divida.isPendente()) {
             throw new RegraNegocioException("Esta dívida já está quitada.");
         }
         divida.quitar();
-        Usuario outro = divida.getDevedor().getId().equals(usuarioId) ? divida.getCredor() : divida.getDevedor();
-        notificacoes.notificar(outro, "A dívida de " + REAIS.format(divida.getValor()) + " de "
-                + divida.getDevedor().getNome() + " para " + divida.getCredor().getNome()
-                + " foi marcada como paga no grupo \"" + divida.getGrupo().getNome() + "\".");
+        notificacoes.notificar(divida.getCredor(), divida.getDevedor().getNome() + " marcou como paga a dívida de "
+                + REAIS.format(divida.getValor()) + " com você no grupo \"" + divida.getGrupo().getNome() + "\".");
         return detalhar(usuarioId, divida.getGrupo().getId());
     }
 

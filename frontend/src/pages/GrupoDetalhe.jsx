@@ -112,14 +112,14 @@ export default function GrupoDetalhe() {
             {pendentes.length === 0 ? <p className="vazio">Nenhuma dívida pendente.</p> : (
               <ul className="dividas">
                 {pendentes.map((d) => {
-                  const envolvido = d.devedorId === grupo.meuId || d.credorId === grupo.meuId;
+                  const souDevedor = d.devedorId === grupo.meuId; // RF-009: só o devedor marca como paga
                   return (
                     <li key={d.id}>
                       <div>
                         <b>{d.devedorNome}</b> deve <b>{reais(d.valor)}</b> a <b>{d.credorNome}</b>
-                        <small>{d.despesa}</small>
+                        <small>{d.despesa}{d.credorId === grupo.meuId && ' · aguardando o pagamento'}</small>
                       </div>
-                      {envolvido && ativo && (
+                      {souDevedor && ativo && (
                         <button className="botao pequeno" onClick={() => executar(() => api.post(`/dividas/${d.id}/quitar`), 'Dívida marcada como paga.')}>
                           <Icone nome="check" tamanho={16} /> Marcar como paga
                         </button>

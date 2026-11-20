@@ -73,6 +73,16 @@ public class ServicoCategorizacaoIA {
         this.modelo = modelo;
         this.timeout = Duration.ofSeconds(timeoutSegundos);
         this.http = HttpClient.newBuilder().connectTimeout(this.timeout).build();
+        if (iaConfigurada()) {
+            log.info("Categorização por IA ativa (Google Gemini, modelo {}).", modelo);
+        } else {
+            log.warn("GEMINI_API_KEY não configurada: a categoria será sugerida pela classificação local "
+                    + "(palavras-chave). Veja o arquivo .env.exemplo.");
+        }
+    }
+
+    private boolean iaConfigurada() {
+        return chave != null && !chave.isBlank();
     }
 
     /** Resultado da sugestão: o nome da categoria e de onde ela veio. */
@@ -80,7 +90,7 @@ public class ServicoCategorizacaoIA {
     }
 
     public Sugestao sugerir(String descricao, List<String> categorias) {
-        if (chave != null && !chave.isBlank()) {
+        if (iaConfigurada()) {
             Optional<String> daIA = perguntarAoModelo(descricao, categorias);
             if (daIA.isPresent()) {
                 return new Sugestao(daIA.get(), "IA");
@@ -96,8 +106,16 @@ public class ServicoCategorizacaoIA {
                 + ". Responda somente com o nome da categoria, exatamente como está na lista. Gasto: "
                 + descricao;
         try {
-            Map<String, Object> corpo = Map.of("contents", List.of(
-                    Map.of("parts", List.of(Map.of("text", prompt)))));
+            Map<String, Object> config = new LinkedHashMap<>();
+            config.put("temperature", 0);
+            config.put("maxOutputTokens", 20);
+            if (modelo.startsWith("gemini-2.5-flash")) {
+                // Sem a etapa de "raciocínio", o modelo responde bem dentro do limite de 3 s (RNF-015)
+                config.put("thinkingConfig", Map.of("thinkingBudget", 0));
+            }
+            Map<String, Object> corpo = Map.of(
+                    "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                    "generationConfig", config);
             String url = "https://generativelanguage.googleapis.com/v1beta/models/"
                     + URLEncoder.encode(modelo, StandardCharsets.UTF_8) + ":generateContent";
             HttpRequest requisicao = HttpRequest.newBuilder(URI.create(url))
@@ -108,7 +126,8 @@ public class ServicoCategorizacaoIA {
                     .build();
             HttpResponse<String> resposta = http.send(requisicao, HttpResponse.BodyHandlers.ofString());
             if (resposta.statusCode() != 200) {
-                log.warn("API de IA respondeu {}. Usando classificação local.", resposta.statusCode());
+                log.warn("API de IA respondeu {}: {}. Usando classificação local.", resposta.statusCode(),
+                        resposta.body().length() > 300 ? resposta.body().substring(0, 300) : resposta.body());
                 return Optional.empty();
             }
             JsonNode texto = json.readTree(resposta.body())

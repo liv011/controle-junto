@@ -99,7 +99,7 @@ Sem configurar nada, o sistema usa **H2 em memória**, e os dados somem ao reini
 | `GEMINI_API_KEY` | Sugestão de categoria pela IA | Chave gratuita em https://aistudio.google.com/apikey |
 | `JWT_SECRET` | Assinatura do token de login | Qualquer texto longo (32+ caracteres) |
 
-3. Rode `bash iniciar-backend.sh`. O script carrega o `.env` sozinho.
+3. Rode o back-end normalmente (`bash iniciar-backend.sh` ou `.\mvnw.cmd spring-boot:run` dentro de `backend`). O `.env` é lido automaticamente. No log de inicialização aparece "Categorização por IA ativa" quando a chave do Gemini foi encontrada.
 
 As tabelas são criadas automaticamente no Supabase na primeira execução (`ddl-auto=update`). Para não criar os usuários de exemplo no banco compartilhado, defina `DADOS_EXEMPLO=false`.
 
@@ -114,8 +114,8 @@ As tabelas são criadas automaticamente no Supabase na primeira execução (`ddl
 | RF-005 Criar grupo / RF-006 Participantes | `GrupoController`, tela *Grupos* |
 | RF-007 Despesa em grupo (divisão igual ou personalizada) | `GrupoService.registrarDespesa` |
 | RF-008 Cálculo automático de saldos | `CalculadoraSaldos` |
-| RF-009 Marcar dívida como paga | `GrupoService.quitarDivida` |
-| RF-010 Categoria sugerida por IA | `ServicoCategorizacaoIA` |
+| RF-009 Marcar dívida como paga (somente o devedor) | `GrupoService.quitarDivida` |
+| RF-010 Categoria sugerida por IA | `ServicoCategorizacaoIA` (Google Gemini; sem chave, usa palavras-chave) |
 | RF-011 Dashboard | `OrcamentoService.dashboard`, tela *Painel* |
 | RF-012 Notificações | `NotificacaoService`, sino no topo da tela |
 | RF-013 Orçamento mensal | `OrcamentoService` |
@@ -149,7 +149,7 @@ Todas as rotas, exceto cadastro e login, exigem o cabeçalho `Authorization: Bea
 | POST | `/api/grupos/{id}/despesas` | Registra despesa no grupo |
 | PUT / DELETE | `/api/grupos/{id}/despesas/{despesaId}` | Edita e exclui despesa (só quem registrou) |
 | POST | `/api/grupos/{id}/encerrar` | Encerra o grupo |
-| POST | `/api/dividas/{id}/quitar` | Marca a dívida como paga |
+| POST | `/api/dividas/{id}/quitar` | Marca a dívida como paga (somente o devedor) |
 | GET | `/api/notificacoes` | Lista as notificações |
 | POST | `/api/notificacoes/{id}/lida` | Marca a notificação como lida |
 
